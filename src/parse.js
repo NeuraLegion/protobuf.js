@@ -377,8 +377,11 @@ function parse(source, root, options) {
         }
         if (skip("{", true)) {
             var token;
-            while ((token = next()) !== "}")
+            while ((token = next()) !== "}") {
+                if (token === null)
+                    throw illegal(token, "end of input");
                 fnIf(token);
+            }
             skip(";", true);
         } else {
             if (fnElse)
@@ -739,7 +742,7 @@ function parse(source, root, options) {
                 options: undefined
             };
         dummy.getOption = function(name) {
-            return this.options[name];
+            return this.options && this.options[name];
         };
         dummy.setOption = function(name, value) {
             ReflectionObject.prototype.setOption.call(dummy, name, value);
