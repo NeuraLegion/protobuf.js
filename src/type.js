@@ -523,12 +523,38 @@ Type.prototype.setup = function setup() {
         types  : types,
         util   : util
     });
-    this.decode = decoder(this)({
+    var generatedDecode = decoder(this)({
         Reader : Reader,
         types  : types,
         util   : util,
         C      : this.ctor
     });
+    this.decode = function decode(reader, length) {
+        if (!(reader instanceof Reader))
+            reader = Reader.create(reader);
+        var pos = reader.pos;
+        try {
+            return generatedDecode.call(this, reader, length);
+        } catch (err) {
+            // TextDecoder throws for invalid UTF-8. Decoding should still be
+            // robust for wire data containing a malformed string; retry with
+            // the reader's replacement-character decoder in that case.
+            if (!(err instanceof TypeError))
+                throw err;
+            reader.pos = pos;
+            var hasStringVerify = Object.prototype.hasOwnProperty.call(reader, "stringVerify"),
+                stringVerify = reader.stringVerify;
+            reader.stringVerify = reader.string;
+            try {
+                return generatedDecode.call(this, reader, length);
+            } finally {
+                if (hasStringVerify)
+                    reader.stringVerify = stringVerify;
+                else
+                    delete reader.stringVerify;
+            }
+        }
+    };
     this.verify = verifier(this)({
         types : types,
         util  : util
