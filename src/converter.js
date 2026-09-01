@@ -76,7 +76,7 @@ function genValuePartial_fromObject(gen, field, fieldIndex, prop, dstProp) {
                     ("m%s=parseInt(d%s,10)", prop, prop)
                 ("else if(typeof d%s===\"number\")", prop)
                     ("m%s=d%s", prop, prop)
-                ("else if(typeof d%s===\"object\")", prop)
+                ("else if(typeof d%s===\"object\"&&d%s!==null)", prop, prop)
                     ("m%s=new util.LongBits(d%s.low>>>0,d%s.high>>>0).toNumber(%s)", prop, prop, prop, isUnsigned ? "true" : "");
                 break;
             case "bytes": gen

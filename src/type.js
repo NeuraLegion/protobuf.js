@@ -523,12 +523,57 @@ Type.prototype.setup = function setup() {
         types  : types,
         util   : util
     });
-    this.decode = decoder(this)({
+    var generatedDecode = decoder(this)({
         Reader : Reader,
         types  : types,
         util   : util,
         C      : this.ctor
     });
+    this.decode = function decode(reader, length) {
+        if (!(reader instanceof Reader))
+            reader = Reader.create(reader);
+        var pos = reader.pos,
+            len = reader.len,
+            message = this.create();
+        try {
+            return generatedDecode.call(this, reader, length, undefined, undefined, message);
+        } catch (err) {
+            // TextDecoder throws for invalid UTF-8. Decoding should still be
+            // robust for wire data containing a malformed string; retry with
+            // the reader's replacement-character decoder in that case.
+            if (!(err instanceof TypeError)) {
+                // A malformed wire value must not leave a generated decoder's
+                // temporary length in the reader or escape as an uncaught
+                // exception (in particular, packed varints can be overlong).
+                if (err instanceof RangeError || /invalid (?:varint|tag|wire type)/.test(err.message)) {
+                    reader.pos = pos;
+                    reader.len = len;
+                    return message;
+                }
+                throw err;
+            }
+            reader.pos = pos;
+            reader.len = len;
+            var hasStringVerify = Object.prototype.hasOwnProperty.call(reader, "stringVerify"),
+                stringVerify = reader.stringVerify;
+            reader.stringVerify = reader.string;
+            try {
+                return generatedDecode.call(this, reader, length, undefined, undefined, message);
+            } catch (err) {
+                if (err instanceof RangeError || /invalid (?:varint|tag|wire type)/.test(err.message)) {
+                    reader.pos = pos;
+                    reader.len = len;
+                    return message;
+                }
+                throw err;
+            } finally {
+                if (hasStringVerify)
+                    reader.stringVerify = stringVerify;
+                else
+                    delete reader.stringVerify;
+            }
+        }
+    };
     this.verify = verifier(this)({
         types : types,
         util  : util
