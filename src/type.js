@@ -532,7 +532,8 @@ Type.prototype.setup = function setup() {
     this.decode = function decode(reader, length) {
         if (!(reader instanceof Reader))
             reader = Reader.create(reader);
-        var pos = reader.pos;
+        var pos = reader.pos,
+            len = reader.len;
         try {
             return generatedDecode.call(this, reader, length);
         } catch (err) {
@@ -542,6 +543,7 @@ Type.prototype.setup = function setup() {
             if (!(err instanceof TypeError))
                 throw err;
             reader.pos = pos;
+            reader.len = len;
             var hasStringVerify = Object.prototype.hasOwnProperty.call(reader, "stringVerify"),
                 stringVerify = reader.stringVerify;
             reader.stringVerify = reader.string;
